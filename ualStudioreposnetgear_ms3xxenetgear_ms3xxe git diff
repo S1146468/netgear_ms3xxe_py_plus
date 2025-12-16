@@ -1,0 +1,163 @@
+[1mdiff --git a/netgear_ms3xxe.pyproj b/netgear_ms3xxe.pyproj[m
+[1mindex 8adf468..6fabdb0 100644[m
+[1m--- a/netgear_ms3xxe.pyproj[m
+[1m+++ b/netgear_ms3xxe.pyproj[m
+[36m@@ -23,6 +23,7 @@[m
+   <ItemGroup>[m
+     <Compile Include="netgear_ms3xxe\auth.py" />[m
+     <Compile Include="netgear_ms3xxe\client.py" />[m
+[32m+[m[32m    <Compile Include="netgear_ms3xxe\endpoints.py" />[m
+     <Compile Include="netgear_ms3xxe\exceptions.py" />[m
+     <Compile Include="netgear_ms3xxe\domains\access_control.py" />[m
+     <Compile Include="netgear_ms3xxe\domains\ports.py" />[m
+[36m@@ -30,6 +31,8 @@[m
+     <Compile Include="netgear_ms3xxe\models\access_control.py" />[m
+     <Compile Include="netgear_ms3xxe\models\ports.py" />[m
+     <Compile Include="netgear_ms3xxe\models\__init__.py" />[m
+[32m+[m[32m    <Compile Include="netgear_ms3xxe\profiles\base.py" />[m
+[32m+[m[32m    <Compile Include="netgear_ms3xxe\profiles\ms308e.py" />[m
+     <Compile Include="netgear_ms3xxe\router.py" />[m
+     <Compile Include="tests\smoke.py" />[m
+     <Compile Include="netgear_ms3xxe\transport.py" />[m
+[36m@@ -38,6 +41,7 @@[m
+     <Folder Include="netgear_ms3xxe\" />[m
+     <Folder Include="netgear_ms3xxe\domains\" />[m
+     <Folder Include="netgear_ms3xxe\models\" />[m
+[32m+[m[32m    <Folder Include="netgear_ms3xxe\profiles\" />[m
+     <Folder Include="tests\" />[m
+   </ItemGroup>[m
+   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />[m
+[1mdiff --git a/netgear_ms3xxe.slnx b/netgear_ms3xxe.slnx[m
+[1mindex 8b57d59..a07dd09 100644[m
+[1m--- a/netgear_ms3xxe.slnx[m
+[1m+++ b/netgear_ms3xxe.slnx[m
+[36m@@ -1,5 +1,5 @@[m
+ <Solution>[m
+[31m-  <Project Path="netgear_ms3xxe.pyproj" Type="888888a0-9f3d-457c-b088-3a5042f75d52">[m
+[32m+[m[32m  <Project Path="netgear_ms3xxe.pyproj" Type="888888a0-9f3d-457c-b088-3a5042f75d52" Id="0705d7e2-d95f-4eb6-a131-8043b67b4b23">[m
+     <Build Project="false" />[m
+   </Project>[m
+ </Solution>[m
+[1mdiff --git a/netgear_ms3xxe/router.py b/netgear_ms3xxe/router.py[m
+[1mindex c2069a0..a23d9d7 100644[m
+[1m--- a/netgear_ms3xxe/router.py[m
+[1m+++ b/netgear_ms3xxe/router.py[m
+[36m@@ -1,27 +1,104 @@[m
+[32m+[m[32m# netgear_ms3xxe/router.py[m
+[32m+[m[32mfrom __future__ import annotations[m
+[32m+[m
+ import json[m
+[32m+[m[32mfrom typing import Any, Dict, Optional[m
+[32m+[m
+ from .exceptions import NetgearAPIError[m
+ [m
+ [m
+ class Router:[m
+[31m-    def __init__(self, transport, auth):[m
+[32m+[m[32m    """[m
+[32m+[m[32m    Single choke-point for API semantics:[m
+[32m+[m[32m      - correct encoding (plain-text JSON string vs normal JSON)[m
+[32m+[m[32m      - consistent JSON parsing[m
+[32m+[m[32m      - consistent errCode handling[m
+[32m+[m[32m      - clear errors when the switch returns HTML or non-JSON[m
+[32m+[m[32m    """[m
+[32m+[m
+[32m+[m[32m    def __init__(self, transport, auth=None):[m
+         self.transport = transport[m
+[31m-        self.auth = auth[m
+[32m+[m[32m        self.auth = auth  # optional (future: ensure_login / refresh)[m
+[32m+[m
+[32m+[m[32m    # ---------- public helpers ----------[m
+[32m+[m
+[32m+[m[32m    def get(self, path: str) -> Dict[str, Any]:[m
+[32m+[m[32m        return self._request_json("GET", path)[m
+[32m+[m
+[32m+[m[32m    def post_textjson(self, path: str, obj: Any | None) -> Dict[str, Any]:[m
+[32m+[m[32m        """[m
+[32m+[m[32m        Sends body as a JSON string with Content-Type: text/plain;charset=UTF-8.[m
+[32m+[m[32m        Use this for endpoints like /api/login_session on MS308E family.[m
+[32m+[m[32m        """[m
+[32m+[m[32m        return self._request_json("POST", path, text_json_body=obj)[m
+[32m+[m
+[32m+[m[32m    def patch_textjson(self, path: str, obj: Any | None) -> Dict[str, Any]:[m
+[32m+[m[32m        """[m
+[32m+[m[32m        Sends body as a JSON string with Content-Type: text/plain;charset=UTF-8.[m
+[32m+[m[32m        Use this for endpoints like /api/system/login on MS308E family.[m
+[32m+[m[32m        """[m
+[32m+[m[32m        return self._request_json("PATCH", path, text_json_body=obj)[m
+[32m+[m
+[32m+[m[32m    def post_json(self, path: str, obj: Any | None) -> Dict[str, Any]:[m
+[32m+[m[32m        """Normal JSON body (application/json). Only use if confirmed by HAR."""[m
+[32m+[m[32m        return self._request_json("POST", path, json_body=obj)[m
+ [m
+[31m-    def api(self, method: str, path: str, *, text_json=None):[m
+[31m-        r = self.transport.request([m
+[31m-            method,[m
+[31m-            path,[m
+[31m-            data=json.dumps(text_json, separators=(",", ":")) if text_json else None,[m
+[31m-            headers={"Content-Type": "text/plain;charset=UTF-8"} if text_json else None,[m
+[31m-        )[m
+[32m+[m[32m    def patch_json(self, path: str, obj: Any | None) -> Dict[str, Any]:[m
+[32m+[m[32m        """Normal JSON body (application/json). Only use if confirmed by HAR."""[m
+[32m+[m[32m        return self._request_json("PATCH", path, json_body=obj)[m
+ [m
+[32m+[m[32m    # ---------- core request/parse ----------[m
+[32m+[m
+[32m+[m[32m    def _request_json([m
+[32m+[m[32m        self,[m
+[32m+[m[32m        method: str,[m
+[32m+[m[32m        path: str,[m
+[32m+[m[32m        *,[m
+[32m+[m[32m        text_json_body: Any | None = None,[m
+[32m+[m[32m        json_body: Any | None = None,[m
+[32m+[m[32m    ) -> Dict[str, Any]:[m
+[32m+[m[32m        headers: Dict[str, str] = {}[m
+[32m+[m[32m        data: Optional[str] = None[m
+[32m+[m
+[32m+[m[32m        if text_json_body is not None and json_body is not None:[m
+[32m+[m[32m            raise ValueError("Provide only one of text_json_body or json_body")[m
+[32m+[m
+[32m+[m[32m        if text_json_body is not None:[m
+[32m+[m[32m            headers["Content-Type"] = "text/plain;charset=UTF-8"[m
+[32m+[m[32m            data = json.dumps(text_json_body, separators=(",", ":"))[m
+[32m+[m[32m        elif json_body is not None:[m
+[32m+[m[32m            headers["Content-Type"] = "application/json"[m
+[32m+[m[32m            data = json.dumps(json_body, separators=(",", ":"))[m
+[32m+[m
+[32m+[m[32m        r = self.transport.request(method, path, headers=headers or None, data=data)[m
+[32m+[m
+[32m+[m[32m        # If you want “retry once on 401”, add it here later.[m
+         if r.status_code == 401:[m
+[31m-            raise NetgearAPIError("Unauthorized")[m
+[32m+[m[32m            raise NetgearAPIError("Unauthorized (401)")[m
+[32m+[m
+[32m+[m[32m        # 4xx/5xx -> raise with context[m
+[32m+[m[32m        try:[m
+[32m+[m[32m            r.raise_for_status()[m
+[32m+[m[32m        except Exception as e:[m
+[32m+[m[32m            snippet = (r.text or "")[:300].replace("\n", " ")[m
+[32m+[m[32m            raise NetgearAPIError(f"HTTP {r.status_code} for {method} {path}: {snippet}") from e[m
+[32m+[m
+[32m+[m[32m        # Guard: API should return JSON; HTML means wrong route / SPA fallback.[m
+[32m+[m[32m        ctype = (r.headers.get("content-type") or "").lower()[m
+[32m+[m[32m        if "application/json" not in ctype:[m
+[32m+[m[32m            snippet = (r.text or "")[:300].replace("\n", " ")[m
+[32m+[m[32m            raise NetgearAPIError([m
+[32m+[m[32m                f"Non-JSON response for {method} {path} (content-type={ctype}): {snippet}"[m
+[32m+[m[32m            )[m
+ [m
+[31m-        r.raise_for_status()[m
+[32m+[m[32m        try:[m
+[32m+[m[32m            j = r.json()[m
+[32m+[m[32m        except Exception as e:[m
+[32m+[m[32m            snippet = (r.text or "")[:300].replace("\n", " ")[m
+[32m+[m[32m            raise NetgearAPIError(f"Invalid JSON for {method} {path}: {snippet}") from e[m
+ [m
+[31m-        j = r.json()[m
+[31m-        if "errCode" in j and j["errCode"] not in (0, None):[m
+[31m-            raise NetgearAPIError(j)[m
+[32m+[m[32m        # NETGEAR-style error envelope[m
+[32m+[m[32m        if isinstance(j, dict) and "errCode" in j and j["errCode"] not in (0, None):[m
+[32m+[m[32m            raise NetgearAPIError(f"API error for {method} {path}: {j}")[m
+ [m
+         return j[m
