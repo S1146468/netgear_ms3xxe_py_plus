@@ -6,7 +6,7 @@ class PortsAPI:
         self.router = router
 
     def get(self):
-        j = self.router.get("/api/ports")
+        j = self.router.api("GET", "/api/ports")
         return [
             PortConf(
                 port_no=p["portNo"],
