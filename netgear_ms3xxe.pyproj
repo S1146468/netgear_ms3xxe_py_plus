@@ -23,6 +23,7 @@
   <ItemGroup>
     <Compile Include="netgear_ms3xxe\auth.py" />
     <Compile Include="netgear_ms3xxe\client.py" />
+    <Compile Include="netgear_ms3xxe\endpoints.py" />
     <Compile Include="netgear_ms3xxe\exceptions.py" />
     <Compile Include="netgear_ms3xxe\domains\access_control.py" />
     <Compile Include="netgear_ms3xxe\domains\ports.py" />
@@ -30,6 +31,8 @@
     <Compile Include="netgear_ms3xxe\models\access_control.py" />
     <Compile Include="netgear_ms3xxe\models\ports.py" />
     <Compile Include="netgear_ms3xxe\models\__init__.py" />
+    <Compile Include="netgear_ms3xxe\profiles\base.py" />
+    <Compile Include="netgear_ms3xxe\profiles\ms308e.py" />
     <Compile Include="netgear_ms3xxe\router.py" />
     <Compile Include="tests\smoke.py" />
     <Compile Include="netgear_ms3xxe\transport.py" />
@@ -38,6 +41,7 @@
     <Folder Include="netgear_ms3xxe\" />
     <Folder Include="netgear_ms3xxe\domains\" />
     <Folder Include="netgear_ms3xxe\models\" />
+    <Folder Include="netgear_ms3xxe\profiles\" />
     <Folder Include="tests\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
