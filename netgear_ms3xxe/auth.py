@@ -36,7 +36,7 @@ class AuthManager:
             headers={"Content-Type": "text/plain;charset=UTF-8"},
         )
         
-        # Known quirk: can 500 if session already exists    dsfasdfs
+        # Known quirk: can 500 if session already exists
         if r2.status_code == 500:
             self.transport.session.cookies.clear()
             self.transport.session.headers.pop("Authorization", None)
